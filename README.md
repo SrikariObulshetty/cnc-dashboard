@@ -1,5 +1,5 @@
 1. Install n8n:
-   npx n8n
+   npm install -g n8n 
 
 2. Start n8n:
    n8n
