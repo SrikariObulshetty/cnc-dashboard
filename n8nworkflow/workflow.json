@@ -1,0 +1,139 @@
+{
+  "name": "CNC Tool Wear Digital Twin System",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const d = $json;\n\nif (!d.base || !d.new) {\n  return [{ json: { error: \"Missing data\" } }];\n}\n\nconst base = d.base;\nconst newData = d.new;\n\n// condition logic\nlet condition = \"Good\";\nif (base.life < 40) condition = \"Critical\";\nelse if (base.life < 70) condition = \"Warning\";\n\nreturn [\n  {\n    json: {\n      prediction: {\n        tool_wear: base.wear,\n        condition: condition,\n        remaining_life: base.life\n      },\n      what_if: {\n        change: `Speed ${base.speed} → ${newData.speed}`,\n        impact: `Life drops from ${base.life.toFixed(2)} → ${newData.life.toFixed(2)}`\n      }\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        784,
+        0
+      ],
+      "id": "f8506aff-3bcb-401d-92b5-eeaaee87b879",
+      "name": "explain node"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json.body;\n\nconst speed = input.cuttingSpeed;\nconst feed = input.feedRate;\nconst depth = input.depthOfCut;\n\nconst wear = 0.02 * speed + 0.03 * feed + 0.01 * depth;\nconst life = 100 - wear;\n\nreturn [\n  {\n    json: {\n      speed,\n      feed,\n      depth,\n      wear,\n      life\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ],
+      "id": "fa1d08e9-6fb4-4ece-bcfe-a4ccefc12773",
+      "name": "Prediction Layer"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $json;\n\nconst speed = d.speed ?? 0;\nconst feed = d.feed ?? 0;\nconst depth = d.depth ?? 0;\n\nconst baseWear = d.wear ?? 0;\nconst baseLife = d.life ?? 0;\n\nconst newSpeed = speed * 1.2;\n\nconst newWear = 0.02 * newSpeed + 0.03 * feed + 0.01 * depth;\nconst newLife = 100 - newWear;\n\nreturn [\n  {\n    json: {\n      base: {\n        speed,\n        wear: baseWear,\n        life: baseLife\n      },\n      new: {\n        speed: newSpeed,\n        wear: newWear,\n        life: newLife\n      }\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        0
+      ],
+      "id": "bef50c17-7582-4961-9fcb-5695dad9e1d8",
+      "name": "What-If layer"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cnc-tool-wear",
+        "responseMode": "=responseNode",
+        "options": {
+          "responseContentType": ""
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        320,
+        0
+      ],
+      "id": "d9891109-e89e-4f1d-b8de-1a8eadd1d9ee",
+      "name": "Webhook",
+      "webhookId": "99edf7e6-2f46-4aa3-b0ab-9b480ffd21de"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        928,
+        0
+      ],
+      "id": "0928c69d-0fcf-4e3a-8671-5b58892454ac",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Prediction Layer": {
+      "main": [
+        [
+          {
+            "node": "What-If layer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "explain node": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "What-If layer": {
+      "main": [
+        [
+          {
+            "node": "explain node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prediction Layer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": -1,
+    "availableInMCP": false
+  },
+  "versionId": "a1677533-aa2b-4f4d-ad53-ef8629506fa8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "805143e97fec1312090fd8dcdcd4c92733705a062f62d0875b9aa1c53524034d"
+  },
+  "id": "RKOYr3HabOgXJIxV",
+  "tags": []
+}
